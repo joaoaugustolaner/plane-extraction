@@ -46,23 +46,30 @@ correlacionando cada pixel da imagem com um respectivo ponto. O método de escol
 ## Instalação:
 
 1. Clone o repositório para seu diretório local:
-    `git clone https://gitlab.com/joaoaugustolaner/tc.git && cd tc/`
+    - ```git clone https://gitlab.com/joaoaugustolaner/tc.git && cd tc/```
 
 2. Crie um diretório `build` na raiz do projeto clonado:
-    `mkdir build/ && cd build/`
+    - ```mkdir build/ && cd build/```
 
 3. Execute o **CMakeLists.txt** para gerar o make file e então execute o comando make:
-    `cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..`
-    `make`
+    - ```cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON ..```
+    - ```make```
 4. Crie um link simbólico na **raiz do projeto** para que a IDE possa achar com mais facilidade, caso necesário.
-    `ln -s build/compile_commands.json compile_commands.json` 
+    - ```ln -s build/compile_commands.json compile_commands.json``` 
+---
 ---
 
+
 ## Rodando o projeto:
-- Baixe as [imagens e nuvem de pontos](https://drive.proton.me/urls/6GXD9KN6ZW#i5eDGZEwj1FK).
-- Extraia as imagens em `/resources`, assim como a nuvem de pontos.
+1. Baixe as [imagens e nuvem de pontos](https://drive.proton.me/urls/6GXD9KN6ZW#i5eDGZEwj1FK);
+2. Crie o diretório `/resources` na raiz do projeto;
+    - ``` mkdir /resources && cd resources/ ```
 
-- Confira se **todas as imagens** (IMG_5375.JPG ... IMG_5417.JPG) estão presentes no diretório `/resources/images`.
-- Confira se o **arquivo com a nuvem de pontos**  está em `/resources`
+3. Extraia as imagens em `/resources`, assim como a nuvem de pontos.
+    - ```unzip path/to/images ./ && mv path/to/point-cloud.txt ./```   
 
-- Vá ao diretório **build** `cd build/` e digite no seu terminal: `./TC`
+4. Confira se **todas as imagens** (IMG_5375.JPG ... IMG_5417.JPG) estão presentes no diretório `/resources/images`.
+5. Confira se o **arquivo com a nuvem de pontos** está em `/resources`
+
+6. Vá ao diretório **build** e execute o programa;
+    - ```cd ../build && ./TC ```
