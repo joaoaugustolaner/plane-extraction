@@ -72,4 +72,4 @@ correlacionando cada pixel da imagem com um respectivo ponto. O método de escol
 5. Confira se o **arquivo com a nuvem de pontos** está em `/resources`
 
 6. Vá ao diretório **build** e execute o programa;
-    - ```cd ../build && ./TC ```
+    - ```cd ../build && ./app ```

@@ -18,7 +18,7 @@ include_directories(include)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Source files 
-add_executable(TC src/Main.cpp src/Stitcher.cpp src/CloudPointProcessor.cpp)
+add_executable(app src/Main.cpp src/Stitcher.cpp src/CloudPointProcessor.cpp)
 
 
 target_link_libraries(TC ${OpenCV_LIBS})
