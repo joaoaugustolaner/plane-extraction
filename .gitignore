@@ -710,4 +710,7 @@ FodyWeavers.xsd
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudio,cmake,ninja,c++,emacs,vim,clion,linux,macos,windows
 
+build/
+compile_commands.json
+resources/
 

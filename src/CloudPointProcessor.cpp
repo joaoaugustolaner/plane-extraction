@@ -6,9 +6,16 @@
 #include <pthread.h>
 #include <sstream>
 #include <string>
-#include <sys/_pthread/_pthread_t.h>
-#include <vector>
 
+#ifdef __APPLE__
+	#include <sys/_pthread/_pthread_t.h>
+#elif __linux__ 
+	#include <pthread.h>
+#else 
+	#error "Platform not suported"
+#endif
+
+#include <vector>
 #define NUM_THREADS 10
 #define NUM_LINES 15438380
 

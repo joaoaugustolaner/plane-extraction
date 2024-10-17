@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 # set(OpenCV_DIR "/usr/local/Cellar/opencv/4.10.0_6/lib/cmake/opencv4")
 
 
-find_package(OpenCV 4.10 REQUIRED)
+find_package(OpenCV 4.6 REQUIRED)
 # Include the directories with header files
 include_directories(include)
 include_directories(${OpenCV_INCLUDE_DIRS})
@@ -21,7 +21,7 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 add_executable(app src/Main.cpp src/Stitcher.cpp src/CloudPointProcessor.cpp)
 
 
-target_link_libraries(TC ${OpenCV_LIBS})
+target_link_libraries(app ${OpenCV_LIBS})
 
 #Debuggind
 message(STATUS "OpenCV library status:")
