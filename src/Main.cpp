@@ -46,7 +46,7 @@ cv::Mat stitch_images(std::string& images_directory){
 
 int main (int argc, char *argv[]) {
 
-	if(!std::filesystem::exists(std::filesystem::path("../resources/pano/panorama.jpg"))){
+	if(!std::filesystem::exists(std::filesystem::path("../resources/panorama.jpg"))){
 		std::string imagesDirectory = "../resources/images/";
 
 		std::cout << "Beginning file stitching...\n" << std::endl;
@@ -65,20 +65,20 @@ int main (int argc, char *argv[]) {
 
 		std::cout << "Skipping stiching process! \n" << std::endl;
 		system("sleep 2");
+		system("clear");
 
 	}
 
-	std::cout << "Starting cloud point processing!\n";
+	std::cout << "Starting cloud point processing!\n" << std::endl;
 
 	std::string cloudPointFile = "../resources/point-cloud.txt";
 	CloudPointProcessor cloudPointProcessor(cloudPointFile);
 	cloudPointProcessor.readCloudPoints();
 
-	std::cout << "Process finished!\n";
-
-
+	std::cout << "Correlating pixel with point from point cloud\n" << std::endl;
 	std::vector<Point> points = cloudPointProcessor.getPoints();
-	std::cout << "The software has processed " << points.size() << " points from the file:" << cloudPointFile << std::endl;
+
+	//TODO: Implement in Main the call to MapToPixel and ClickHandler	
 
 	return 0;
 }
