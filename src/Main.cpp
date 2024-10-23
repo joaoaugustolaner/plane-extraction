@@ -13,7 +13,20 @@
 #include <string>
 #include <vector>
 
+cv::Mat cropImage(const cv::Mat& image) {
+    // Define the cropping rectangle based on the specified dimensions
+    int top = 1162;
+    int bottom = 5720 - 965;
+    int left = 2297;
+    int right = 14492 - 1696;
 
+    // Crop the image by defining the Rect object
+    cv::Rect cropRegion(left, top, right - left, bottom - top);
+
+    // Crop and return the new image
+    cv::Mat croppedImage = image(cropRegion).clone();
+    return croppedImage;
+}
 
 cv::Mat stitch_images(std::string& images_directory){
 
@@ -40,10 +53,13 @@ int main (int argc, char *argv[]) {
 		system("sleep 0.5");
 
 		cv::Mat panorama = stitch_images(imagesDirectory);
-		std::cout << "Writting image to /resources/pano/panorama.jpg\n";
+		cv::Mat cropedPano = cropImage(panorama);
 
-		cv::imwrite("../resources/pano/panorama.jpg", panorama);
-		std::cout << "Stitching Process Finished! Check /resources/pano/ .\n" << std::endl;
+		std::cout << "Writting image to /resources/panorama.jpg\n";
+		cv::imwrite("../resources/panorama.jpg", cropedPano);
+		cv::imshow("croped", cropedPano);
+		cv::waitKey(10);
+		std::cout << "Stitching Process Finished! Check /resources .\n" << std::endl;
 
 	} else {
 
