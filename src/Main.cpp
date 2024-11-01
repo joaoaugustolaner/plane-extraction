@@ -1,5 +1,6 @@
-#include "Stitcher.hpp"
-#include "CloudPointProcessor.hpp"
+#include "Stitcher.h"
+#include "CloudPointProcessor.h"
+#include "ClickHandler.h"
 
 #include <cstdlib>
 #include <filesystem>
@@ -40,6 +41,7 @@ cv::Mat stitch_images(std::string& images_directory){
 	}
 
 	std::cout << "Stitching Sucessfull\n" << std::endl;
+	std::cout << "The size of the original panorama image is: " << pano.rows * pano.cols;
 
 	return pano;
 }
@@ -65,20 +67,24 @@ int main (int argc, char *argv[]) {
 
 		std::cout << "Skipping stiching process! \n" << std::endl;
 		system("sleep 2");
-		system("clear");
+
 
 	}
-
 	std::cout << "Starting cloud point processing!\n" << std::endl;
 
 	std::string cloudPointFile = "../resources/point-cloud.txt";
 	CloudPointProcessor cloudPointProcessor(cloudPointFile);
 	cloudPointProcessor.readCloudPoints();
-
+	const std::vector<Point> points = cloudPointProcessor.getPoints();
+	
 	std::cout << "Correlating pixel with point from point cloud\n" << std::endl;
-	std::vector<Point> points = cloudPointProcessor.getPoints();
+	
+	cv::Mat pano = cv::imread("../resources/panorama.jpg");	
+	cv::Mat depthMap = cloudPointProcessor.mapToPixel(pano, points);
+	
+	//ClickHandler clickHandler(pano, depthMap);
+	//clickHandler.start();
 
-	//TODO: Implement in Main the call to MapToPixel and ClickHandler	
 
 	return 0;
 }

@@ -16,6 +16,8 @@ class ClickHandler {
 
 		void start();
 
+		void drawClick(int x, int y);
+
 	private:
 		cv::Mat image;
 		cv::Mat depthMap;

@@ -1,5 +1,5 @@
-#ifndef CLOUD_POINT_PROCESSOR_HPP
-#define CLOUD_POINT_PROCESSOR_HPP
+#ifndef CLOUD_POINT_PROCESSOR_H
+#define CLOUD_POINT_PROCESSOR_H
 
 #include <opencv2/core/mat.hpp>
 #include <sys/_pthread/_pthread_mutex_t.h>
@@ -22,12 +22,12 @@ class CloudPointProcessor {
 	public:
     	CloudPointProcessor(const std::string filePath);
     	~CloudPointProcessor();
-    
+
     	void readCloudPoints();
-		
+
 		//readonly, don't change state of Object
 		const std::vector<Point>& getPoints() const;
-		
+
 		// Map Point to Pixel creating two matrices with same height and length
 		cv::Mat mapToPixel(const cv::Mat& image, const std::vector<Point>& points);
 
@@ -37,16 +37,9 @@ class CloudPointProcessor {
 
 		//Thread processing
     	static void* processChunk(void* arg);
-		
+
 		//Process line of file
-   		void processLine(const std::string& line, std::vector<Point>& points);
-
-		pthread_mutex_t fileMutex;
-
-		pthread_mutex_t pointsMutexl;
+   		void processLine(const std::string& line, Point& points);
 };
 
-
-
-#endif // CLOUD_POINT_PROCESSOR_HPP
-
+#endif //CLOUD_POINT_PROCESSOR_H

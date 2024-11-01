@@ -1,4 +1,4 @@
-#include "Stitcher.hpp"
+#include "Stitcher.h"
 
 #include <filesystem>
 #include <iostream>

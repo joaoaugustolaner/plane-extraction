@@ -1,6 +1,7 @@
 #include "ClickHandler.h"
 #include <iostream>
 #include <opencv2/highgui.hpp>
+#include <opencv2/imgproc.hpp>
 
 
 ClickHandler::ClickHandler(const cv::Mat& image, const cv::Mat& depthMap)
@@ -11,13 +12,14 @@ void ClickHandler::onMouse(int event, int x, int y, int flags, void *userdata){
 
 	if(event == cv::EVENT_LBUTTONDOWN) {
 		handler->displayPointInfo(x, y);
+		handler->drawClick(x, y);
 	}
 
 }
 
 void ClickHandler::start(){
 	cv::namedWindow("Plane Extraction");
-	cv::setMouseCallback("Plane Extraction", onMouse);
+	cv::setMouseCallback("Plane Extraction", onMouse, this);
 
 	cv::imshow("Plane Extraction", image);
 	cv::waitKey(0);
@@ -33,6 +35,13 @@ void ClickHandler::displayPointInfo(int x, int y){
 	}
 }
 
+void ClickHandler::drawClick(int x, int y){
+
+	cv::circle(image, cv::Point(x,y), 2, cv::Scalar(0,0,255));
+
+	//redraw image to show pixel
+	cv::imshow("Plane-Extraction", image);
+}
 
 
 
