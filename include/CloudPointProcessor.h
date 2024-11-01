@@ -26,10 +26,10 @@ class CloudPointProcessor {
     	void readCloudPoints();
 
 		//readonly, don't change state of Object
-		const std::vector<Point>& getPoints() const;
+		std::vector<Point> getPoints() const;
 
 		// Map Point to Pixel creating two matrices with same height and length
-		cv::Mat mapToPixel(const cv::Mat& image, const std::vector<Point>& points);
+		cv::Mat mapToPixel(const cv::Mat& image, std::vector<Point>& points);
 
 	private:
 		std::string file;

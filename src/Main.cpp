@@ -75,15 +75,15 @@ int main (int argc, char *argv[]) {
 	std::string cloudPointFile = "../resources/point-cloud.txt";
 	CloudPointProcessor cloudPointProcessor(cloudPointFile);
 	cloudPointProcessor.readCloudPoints();
-	const std::vector<Point> points = cloudPointProcessor.getPoints();
+	std::vector<Point> points = cloudPointProcessor.getPoints();
 	
 	std::cout << "Correlating pixel with point from point cloud\n" << std::endl;
 	
 	cv::Mat pano = cv::imread("../resources/panorama.jpg");	
 	cv::Mat depthMap = cloudPointProcessor.mapToPixel(pano, points);
 	
-	//ClickHandler clickHandler(pano, depthMap);
-	//clickHandler.start();
+	ClickHandler clickHandler(pano, depthMap);
+	clickHandler.start();
 
 
 	return 0;

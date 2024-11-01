@@ -74,61 +74,57 @@ void CloudPointProcessor::processLine(const std::string &line, Point &point) {
 
 
 
-const std::vector<Point> &CloudPointProcessor::getPoints() const { 
+std::vector<Point> CloudPointProcessor::getPoints() const{ 
 	return points; 
 }
 
 
-double computeAngle(const cv::Vec3d& vec1, const cv::Vec3d& vec2) {
-    double dotProduct = vec1.dot(vec2);
-    double magnitude1 = cv::norm(vec1);
-    double magnitude2 = cv::norm(vec2);
-    return std::acos(dotProduct / (magnitude1 * magnitude2));
-}
-
-cv::Mat CloudPointProcessor::mapToPixel(const cv::Mat &image, const std::vector<Point> &points) {
+cv::Mat CloudPointProcessor::mapToPixel(const cv::Mat &image, std::vector<Point> &points) {
 
 	// Initialize depthMap 
 	cv::Mat depthMap = cv::Mat::zeros(image.size(), CV_32F);
-	
-	#pragma omp parallel for
-	for (int i = 0; i < image.rows; i++) {
+
+	float zMin = -3.99f; 
+	float zMax = 2.99f;  
+	float zRange = zMax - zMin;
+
+	std::vector<float> thetaCache(image.cols);
+    std::vector<float> phiCache(image.rows);
+
+    #pragma omp parallel for
+    for (int j = 0; j < image.cols; j++) {
+        thetaCache[j] = (float(j) / image.cols) * 2.0f * M_PI;
+    }
+    #pragma omp parallel for
+    for (int i = 0; i < image.rows; i++) {
+        phiCache[i] = (float(i) / image.rows) * M_PI;
+    }
+
+	#pragma omp parallel for collapse(2)
+    for (int i = 0; i < image.rows; i++) {
         for (int j = 0; j < image.cols; j++) {
 			
-			float theta = (float(j) / image.cols) * 2.0f * M_PI;
-			float phi = (float(i) / image.rows) * M_PI; 
+            float theta = thetaCache[j];
+            float phi = phiCache[i];
 
-			cv::Vec3f vecX(std::cos(theta), std::sin(theta), 0);
+            cv::Vec3f vecX(std::cos(theta), std::sin(theta), 0);
             cv::Vec3f vecY(0, std::sin(phi), std::cos(phi));
 
+            float closestZ = std::numeric_limits<float>::lowest();
 
-			float closestZ = std::numeric_limits<float>::max();
-            Point closestPoint;
-	
-			for (const Point& pt : points) {
-                cv::Vec3f vecP(pt.x, pt.y, pt.z);
+            for (const Point& point : points) {
+                float normalizedZ = (point.z - zMin) / zRange;  // Normalize Z
+                cv::Vec3f vecP(point.x, point.y, normalizedZ);
 
-                // Check if pt falls within pixel's solid angle
-                if ((vecX.dot(vecP) >= 0) && (vecY.dot(vecP) >= 0)) {
-                    if (fabs(pt.z) < closestZ) {
-                        closestZ = pt.z;
-                        closestPoint = pt;
-                    }
+                if ((vecX.dot(vecP) >= 0) && (vecY.dot(vecP) >= 0) && normalizedZ > closestZ) {
+                    closestZ = normalizedZ;
                 }
             }
-			
-			#pragma omp critical
-			{
-				if (closestZ != std::numeric_limits<float>::max()) {
-					depthMap.at<float>(i, j) = closestZ;
-				} else {
-					closestZ = 0;
-					depthMap.at<float>(i,j) = closestZ;
-				}
-				
-				std::cout << "Assigned Z " << closestZ << " to pixel [" << i << "] [" << j << "]\n";
-			}
-		}
+
+            depthMap.at<float>(i, j) = (closestZ != std::numeric_limits<float>::lowest()) ? closestZ : 0;
+
+            // std::cout << "Assigned Z " << closestZ << " to pixel [" << i << "] [" << j << "]\n";
+        }
 	}
 	return depthMap;
 }
