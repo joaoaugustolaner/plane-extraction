@@ -5,7 +5,7 @@
 
 
 ClickHandler::ClickHandler(const cv::Mat& image, const cv::Mat& depthMap)
-	:image(image), depthMap(depthMap){}
+	:image(image.clone()), depthMap(depthMap){}
 
 void ClickHandler::onMouse(int event, int x, int y, int flags, void *userdata){
 	ClickHandler* handler = static_cast<ClickHandler*>(userdata);
@@ -37,10 +37,10 @@ void ClickHandler::displayPointInfo(int x, int y){
 
 void ClickHandler::drawClick(int x, int y){
 
-	cv::circle(image, cv::Point(x,y), 2, cv::Scalar(0,0,255));
+	cv::circle(image, cv::Point(x, y), 2, cv::Scalar(0, 0, 255), cv::FILLED);
 
-	//redraw image to show pixel
-	cv::imshow("Plane-Extraction", image);
+	cv::imshow("Plane Extraction", image);
+	cv::waitKey(1); //delay to make sure is rendered
 }
 
 
