@@ -1,6 +1,7 @@
 #include "CloudPointProcessor.h"
-#include <cmath>
+#include <algorithm>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -15,116 +16,97 @@
 #include <omp.h>
 
 #ifdef __APPLE__
-	#include <sys/_pthread/_pthread_t.h>
+#include <sys/_pthread/_pthread_t.h>
 #elif __linux__ 
-	#include <pthread.h>
+#include <pthread.h>
 #else 
-	#error "Platform not suported"
+#error "Platform not suported"
 #endif
 
 #define NUM_LINES 15438380
 
-// Initializes contructuor and store it in a variable defined in header
-// The contructor also initializes the mutexes so the process can be Thread Safe
-CloudPointProcessor::CloudPointProcessor(std::string filename) 
-	: file(filename){}
+constexpr double CAMERA_DISTANCE = 2.23;
+constexpr double REAL_IMAGE_HEIGHT = 1.94;
+constexpr double REAL_IMAGE_WIDTH = 6.4;
 
-CloudPointProcessor::~CloudPointProcessor(){}
 
-void CloudPointProcessor::readCloudPoints() {
-	std::ifstream file(this->file);
 
+
+
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr CloudPointProcessor::loadPointCloud(const std::string &filename){
+
+	auto cloud = pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
+
+	std::ifstream file(filename);
 	if (!file.is_open()) {
-		std::cerr << "File could not be open. Process failed! " << this->file << std::endl;
-		return;
+        std::cerr << "Error opening file! " << std::endl;
+		return NULL;
 	}
-	
-	std::vector<Point> tempPoints(NUM_LINES);
 
-	#pragma omp parallel
-	{
-		std::ifstream threadFile(this->file);
-		if (!threadFile.is_open()) {
-			std::cerr << "Error: Could not open file in thread." << std::endl;
-			#pragma omp barrier
-		} else {
-			std::string line;
-			#pragma omp for schedule(static)
-			for (long i = 0; i < NUM_LINES; ++i) {
-				if (std::getline(threadFile, line)) {
-					this->processLine(line, tempPoints.at(i));
-				}
-			}
+    std::string line;
+	while (std::getline(file, line)) {
+		std::istringstream stringStream(line);
+		pcl::PointXYZRGBNormal point;
+		float x, y, z, r, g, b, nx, ny, nz;
+
+		if (stringStream >> x >> y >> z >> r >> g >> b >> nx >> ny >> nz) {
+			point.x = x;
+			point.y = y;
+			point.z = z;
+			point.r = static_cast<uint8_t>(r);
+			point.g = static_cast<uint8_t>(g);
+			point.b = static_cast<uint8_t>(b);
+			point.normal_x = nx;
+			point.normal_y = ny;
+			point.normal_z = nz;
 		}
-	}
 
-	points = std::move(tempPoints);
-
-
-}
-
-
-void CloudPointProcessor::processLine(const std::string &line, Point &point) {
-	std::istringstream stringStream(line);
-
-	if (!(stringStream >> point.x >> point.y >> point.z >> point.r >> point.g >> point.b)) {
-		std::cerr << "Error parsing line!" << line << std::endl;
-	}
-}
-
-
-
-std::vector<Point> CloudPointProcessor::getPoints() const{ 
-	return points; 
-}
-
-
-cv::Mat CloudPointProcessor::mapToPixel(const cv::Mat &image, std::vector<Point> &points) {
-
-	// Initialize depthMap 
-	cv::Mat depthMap = cv::Mat::zeros(image.size(), CV_32F);
-
-	float zMin = -3.99f; 
-	float zMax = 2.99f;  
-	float zRange = zMax - zMin;
-
-	std::vector<float> thetaCache(image.cols);
-    std::vector<float> phiCache(image.rows);
-
-    #pragma omp parallel for
-    for (int j = 0; j < image.cols; j++) {
-        thetaCache[j] = (float(j) / image.cols) * 2.0f * M_PI;
-    }
-    #pragma omp parallel for
-    for (int i = 0; i < image.rows; i++) {
-        phiCache[i] = (float(i) / image.rows) * M_PI;
+        cloud->points.push_back(point);
     }
 
-	#pragma omp parallel for collapse(2)
-    for (int i = 0; i < image.rows; i++) {
-        for (int j = 0; j < image.cols; j++) {
-			
-            float theta = thetaCache[j];
-            float phi = phiCache[i];
+	std::cout << "File parsing completed. \n" << std::endl; 
+	std::cout << "Loaded " << cloud->points.size() << " points from " << filename << std::endl;
+	return cloud;
+}
 
-            cv::Vec3f vecX(std::cos(theta), std::sin(theta), 0);
-            cv::Vec3f vecY(0, std::sin(phi), std::cos(phi));
 
-            float closestZ = std::numeric_limits<float>::lowest();
+cv::Mat CloudPointProcessor::mapToPixel(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr& pointCloud,
+		const cv::Point3f& cameraPosition,
+		const cv::Size& imageSize,
+		float pixelSize) {
 
-            for (const Point& point : points) {
-                float normalizedZ = (point.z - zMin) / zRange;  // Normalize Z
-                cv::Vec3f vecP(point.x, point.y, normalizedZ);
+	cv::Mat depthMap = cv::Mat::zeros(imageSize, CV_32F);
+	
+	#pragma omp parallel for
+    for (size_t i = 0; i < pointCloud->points.size(); ++i) {
+        const pcl::PointXYZRGBNormal& point = pointCloud->points[i];
 
-                if ((vecX.dot(vecP) >= 0) && (vecY.dot(vecP) >= 0) && normalizedZ > closestZ) {
-                    closestZ = normalizedZ;
+        // Calculate vector from camera to point
+        cv::Point3f vector = cv::Point3f(point.x, point.y, point.z) - cameraPosition;
+
+        // Skip points behind the camera
+        if (vector.z <= 0) continue;
+
+        // Project to 2D pixel coordinates
+        int px = static_cast<int>((vector.x / vector.z) / (pixelSize + (imageSize.width / 2.0f)));
+        int py = static_cast<int>((vector.y / vector.z) / (pixelSize + (imageSize.height / 2.0f)));
+
+        // Check if the projected point falls within the image boundaries
+        if (px >= 0 && px < imageSize.width && py >= 0 && py < imageSize.height) {
+            // Use critical section to safely update shared depth_map
+            #pragma omp critical
+            {
+                // Update depth map only if this point is closer
+                if (vector.z < depthMap.at<float>(py, px)) {
+                    depthMap.at<float>(py, px) = vector.z;
+					std::cout << "Assigned Z " << vector.z << " to pixel ["<< py << "] [" << px << "].\n";
                 }
             }
-
-            depthMap.at<float>(i, j) = (closestZ != std::numeric_limits<float>::lowest()) ? closestZ : 0;
-
-            // std::cout << "Assigned Z " << closestZ << " to pixel [" << i << "] [" << j << "]\n";
         }
-	}
+    }
+
 	return depthMap;
 }
+
+

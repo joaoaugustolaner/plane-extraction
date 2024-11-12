@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 
+
+cmake_policy(SET CMP0167 NEW)
+cmake_policy(SET CMP0144 NEW)
+
+
 # Set the project name and version
 project(TC VERSION 1.0.0)
 
@@ -8,6 +13,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 find_package(OpenCV 4.6 REQUIRED)
+find_package(PCL 1.13 REQUIRED COMPONENTS common io visualization)
+find_package(JsonCpp REQUIRED)
 
 # Include the directories with header files
 include_directories(include)
@@ -37,7 +44,8 @@ else()
     endif()
 endif()
 
-target_link_libraries(app PUBLIC ${OpenCV_LIBS})
+target_link_libraries(app PUBLIC JsonCpp::JsonCpp)
+target_link_libraries(app PUBLIC ${OpenCV_LIBS} ${PCL_LIBRARIES})
 
 #Debuggin
 #message(STATUS "OpenCV library status:")

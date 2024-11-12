@@ -2,44 +2,33 @@
 #define CLOUD_POINT_PROCESSOR_H
 
 #include <opencv2/core/mat.hpp>
-#include <sys/_pthread/_pthread_mutex_t.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 #include <vector>
 #include <string>
 #include <pthread.h>
 
-struct Point {
 
-	//spatial coordinates
-    double x, y, z;
 
-	//point color
-    int r, g, b;
+struct Camera {
+	cv::Point3f position;
+	cv::Size imageSize;
 };
 
 class CloudPointProcessor {
 
 
 	public:
-    	CloudPointProcessor(const std::string filePath);
-    	~CloudPointProcessor();
+		static pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr loadPointCloud(const std::string& filename);
 
-    	void readCloudPoints();
-
-		//readonly, don't change state of Object
-		std::vector<Point> getPoints() const;
-
-		// Map Point to Pixel creating two matrices with same height and length
-		cv::Mat mapToPixel(const cv::Mat& image, std::vector<Point>& points);
+		static cv::Mat mapToPixel(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr& point_cloud,
+				const cv::Point3f& camera_position,
+				const cv::Size& image_size,
+				float pixel_size
+				);
 
 	private:
-		std::string file;
-		std::vector<Point> points;
-
-		//Thread processing
-    	static void* processChunk(void* arg);
-
-		//Process line of file
-   		void processLine(const std::string& line, Point& points);
+		std::vector<pcl::PointXYZRGBNormal> points;
 };
 
 #endif //CLOUD_POINT_PROCESSOR_H

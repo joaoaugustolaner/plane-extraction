@@ -18,10 +18,15 @@ class ClickHandler {
 
 		void drawClick(int x, int y);
 
+		void drawPlane();
+
+		void reset();
+
 	private:
 		cv::Mat image;
+		cv::Mat originalImage;
 		cv::Mat depthMap;
-		std::vector<cv::Point> selectedPoints;
+		std::vector<cv::Point3f> selectedPoints;
 
 		void displayPointInfo(int x, int y);
 };
