@@ -10,10 +10,7 @@
 
 
 
-struct Camera {
-	cv::Point3f position;
-	cv::Size imageSize;
-};
+
 
 class CloudPointProcessor {
 
@@ -21,11 +18,8 @@ class CloudPointProcessor {
 	public:
 		static pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr loadPointCloud(const std::string& filename);
 
-		static cv::Mat mapToPixel(const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr& point_cloud,
-				const cv::Point3f& camera_position,
-				const cv::Size& image_size,
-				float pixel_size
-				);
+		static pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr mapToPixel(cv::Mat& image,
+				const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr& point_cloud);
 
 	private:
 		std::vector<pcl::PointXYZRGBNormal> points;

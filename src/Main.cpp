@@ -1,6 +1,6 @@
 #include "Stitcher.h"
 #include "CloudPointProcessor.h"
-//#include "ClickHandler.h"
+#include "ClickHandler.h"
 
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/point_types.h>
@@ -83,18 +83,16 @@ int main (int argc, char *argv[]) {
 	std::cout << "Starting cloud point processing!\n" << std::endl;
 
 	std::string cloudPointFile = "../resources/point-cloud.txt";
+	cv::Mat image = cv::imread("../resources/panorama.jpg");
+	
 	CloudPointProcessor cloudPointProcessor;
 	auto cloud =  CloudPointProcessor::loadPointCloud(cloudPointFile);
-
-	//read pano
-	//auto depthMap = CloudPointProcessor::mapToPixel(image, cloud);
 	
 	// Extracts Centroid
 	Eigen::Vector4f centroid;
-	pcl::compute3DCentroid(*cloud, centroid);
-	
+	pcl::compute3DCentroid(*cloud, centroid);	
 
-	// Move to origin
+	// Move Centroid to Origin
 	Eigen::Affine3f translation = Eigen::Affine3f::Identity();
     translation.translation() << -centroid[0], -centroid[1], -centroid[2];
     pcl::transformPointCloud(*cloud, *cloud, translation);
@@ -105,26 +103,34 @@ int main (int argc, char *argv[]) {
     rotationY.rotate(Eigen::AngleAxisf(theta, Eigen::Vector3f::UnitY()));
 	
 	//rotate clockwise Z
-	float alpha = M_PI / 12;  // angle to be rotated in radians
+	float alpha = -M_PI / 15;  // angle to be rotated in radians
 	Eigen::Affine3f rotationZ = Eigen::Affine3f::Identity();
     rotationZ.rotate(Eigen::AngleAxisf(alpha, Eigen::Vector3f::UnitZ()));
 	
-	Eigen::Affine3f combinedRotations = rotationZ * rotationY;
-	pcl::transformPointCloud(*cloud, *cloud, combinedRotations);
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr rotatedCloud;
+	rotatedCloud = pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
 
+	Eigen::Affine3f combinedRotations = rotationY * rotationZ;
+
+	pcl::transformPointCloud(*cloud, *rotatedCloud, combinedRotations);
+	
+	
+
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr depthMap = CloudPointProcessor::mapToPixel(image, rotatedCloud);
+	
 	// configure visualizer
-	pcl::visualization::PCLVisualizer viewer("Point Cloud with Image Overlay");
-	viewer.setBackgroundColor(0, 0, 0);
+	pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer("Point Cloud with Image Overlay"));
+	viewer->setBackgroundColor(0, 0, 0);
 
-	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb(cloud);
-	viewer.addCoordinateSystem(1.0f);
-    viewer.addPointCloud<pcl::PointXYZRGBNormal>(cloud, rgb, "cloud");
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb(depthMap);
+	viewer->addCoordinateSystem(1.0f);
+    viewer->addPointCloud<pcl::PointXYZRGBNormal>(depthMap, rgb, "cloud");
 
 	
 	float minX, minY = std::numeric_limits<float>::max();
     float maxX, maxY, maxZ = std::numeric_limits<float>::lowest();
 
-    for (const auto& point : cloud->points) {
+    for (const auto& point : depthMap->points) {
         if (point.x < minX) minX = point.x;
         if (point.x > maxX) maxX = point.x;
         if (point.y < minY) minY = point.y;
@@ -138,26 +144,16 @@ int main (int argc, char *argv[]) {
     bounding_box_cloud->push_back(pcl::PointXYZ(maxX, maxY, maxZ));  // Top-right
     bounding_box_cloud->push_back(pcl::PointXYZ(maxX, minY, maxZ));  // Bottom-right
 
-    viewer.addPolygon<pcl::PointXYZ>(bounding_box_cloud, 0.0, 1.0, 1.0, "bounding_box");  // Green color for the polygon
+    viewer->addPolygon<pcl::PointXYZ>(bounding_box_cloud, 1.0, 0.2, 0.7, "bounding_box");  
 	
-//	cv::Mat depthMap = 
-//	cv::imshow("Depth Map", depth_map);
-//    cv::waitKey(0);
-//
-//    return 0;
-
-	while (!viewer.wasStopped()) {
-        viewer.spinOnce(100);
+	ClickHandler clickHandler(viewer);
+	clickHandler.initialize();
+	
+	while (!viewer->wasStopped()) {
+        viewer->spinOnce(100);
     }
 
 	return 0;
 }
-
-
-	//std::cout << "Correlating pixel with point from point cloud\n" << std::endl;
-	//
-	//cv::Mat pano = cv::imread("../resources/panorama.jpg");	
-	//cv::Mat depthMap = cloudPointProcessor.mapToPixel(pano, points);
-	//
 	//ClickHandler clickHandler(pano, depthMap);
 	//clickHandler.start();
