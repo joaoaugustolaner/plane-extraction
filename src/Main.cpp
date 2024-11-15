@@ -2,6 +2,7 @@
 #include "CloudPointProcessor.h"
 #include "ClickHandler.h"
 
+#include <chrono>
 #include <pcl/visualization/pcl_visualizer.h>
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
@@ -17,6 +18,7 @@
 
 #include <iostream>
 #include <string>
+#include <thread>
 #include <vector>
 #include <cstdlib>
 #include <filesystem>
@@ -87,6 +89,7 @@ int main (int argc, char *argv[]) {
 	
 	CloudPointProcessor cloudPointProcessor;
 	auto cloud =  CloudPointProcessor::loadPointCloud(cloudPointFile);
+	std::cout << "Original Cloud Size " << cloud->points.size() << std::endl;
 	
 	// Extracts Centroid
 	Eigen::Vector4f centroid;
@@ -114,46 +117,38 @@ int main (int argc, char *argv[]) {
 
 	pcl::transformPointCloud(*cloud, *rotatedCloud, combinedRotations);
 	
-	
-
 	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr depthMap = CloudPointProcessor::mapToPixel(image, rotatedCloud);
 	
+	std::cout << "DepthMap size: " << depthMap->points.size() << "\n" << std::endl;
+	std::cout << "Image pixels: " << image.rows * image.cols << "\n" << std::endl;
+
+	if(depthMap->empty()) {
+		std::cerr << "Point Cloud is empty, can't visualize!" << std::endl;
+		return -1;
+	}
+
 	// configure visualizer
-	pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer("Point Cloud with Image Overlay"));
+	pcl::visualization::PCLVisualizer::Ptr viewer(
+			new pcl::visualization::PCLVisualizer("Point Cloud with Image Overlay"));
 	viewer->setBackgroundColor(0, 0, 0);
 
 	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb(depthMap);
-	viewer->addCoordinateSystem(1.0f);
+	//viewer->addCoordinateSystem(1.0f);
     viewer->addPointCloud<pcl::PointXYZRGBNormal>(depthMap, rgb, "cloud");
 
-	
-	float minX, minY = std::numeric_limits<float>::max();
-    float maxX, maxY, maxZ = std::numeric_limits<float>::lowest();
+	viewer->setPointCloudRenderingProperties(pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "cloud");
+	//viewer->initCameraParameters();
 
-    for (const auto& point : depthMap->points) {
-        if (point.x < minX) minX = point.x;
-        if (point.x > maxX) maxX = point.x;
-        if (point.y < minY) minY = point.y;
-        if (point.y > maxY) maxY = point.y;
-        if (point.z > maxZ) maxZ = point.z;
-    }
 
-    pcl::PointCloud<pcl::PointXYZ>::Ptr bounding_box_cloud(new pcl::PointCloud<pcl::PointXYZ>());
-    bounding_box_cloud->push_back(pcl::PointXYZ(minX, minY, maxZ));  // Bottom-left
-    bounding_box_cloud->push_back(pcl::PointXYZ(minX, maxY, maxZ));  // Top-left
-    bounding_box_cloud->push_back(pcl::PointXYZ(maxX, maxY, maxZ));  // Top-right
-    bounding_box_cloud->push_back(pcl::PointXYZ(maxX, minY, maxZ));  // Bottom-right
-
-    viewer->addPolygon<pcl::PointXYZ>(bounding_box_cloud, 1.0, 0.2, 0.7, "bounding_box");  
-	
-	ClickHandler clickHandler(viewer);
+	ClickHandler clickHandler(viewer, depthMap);
 	clickHandler.initialize();
 	
+	//viewer->addPolygon<pcl::PointXYZ>(bounding_box_cloud, 1.0, 0.2, 0.7, "bounding_box");  
+	
 	while (!viewer->wasStopped()) {
-        viewer->spinOnce(100);
+        viewer->spinOnce(100); // Allows the viewer to update
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
 	return 0;
 }
-	//ClickHandler clickHandler(pano, depthMap);
-	//clickHandler.start();

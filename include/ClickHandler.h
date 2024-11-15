@@ -8,14 +8,25 @@
 class ClickHandler {
 
 	public: 
-		explicit ClickHandler(pcl::visualization::PCLVisualizer::Ptr viewer);	
+		ClickHandler(pcl::visualization::PCLVisualizer::Ptr viewer, 
+				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr depthMap);	
 		void initialize();		
+		
+
+		std::vector<pcl::PointXYZRGBNormal> getSelectedPoints() const;
+
+
 
 	private:
-		pcl::visualization::PCLVisualizer::Ptr viewer_;
-		void onPointPicked(const pcl::visualization::PointPickingEvent& event);
-
+		void pointPickingCallback(const pcl::visualization::PointPickingEvent& event);
+		void keyboardCallback(const pcl::visualization::KeyboardEvent& kbdEvent);
 		
+		void drawPlane();
+
+		pcl::visualization::PCLVisualizer::Ptr viewer_;
+		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr depthMap;
+		std::vector<pcl::PointXYZRGBNormal> selectedPoints;
+
 };
 
 #endif // CLICK_HANDLER_H
