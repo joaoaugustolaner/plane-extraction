@@ -81,3 +81,10 @@ e ao apertar "enter", um plano de ajuste é calculado para os pontos selecionado
     - `make`
     - `./app `
 
+## Futuros Aprimoramentos:
+
+Os pontos marcados com ! são prioridade para o desenvolvimento do projeto.
+
+- Adicionar suporte a multi threading (!)
+- Criar segmentos ampliados das nuvens de pontos (ferramenta de recorte e ampliação)
+- Criar linhas que segmentam os pontos selecionados (ferramenta de vetorização).
