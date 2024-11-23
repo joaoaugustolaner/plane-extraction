@@ -1,32 +1,37 @@
-#ifndef CLICK_HANDLER_H
-#define CLICK_HANDLER_H
+#ifndef CLICKHANDLER_H
+#define CLICKHANDLER_H
 
-#include <pcl/visualization/pcl_visualizer.h>
-#include <pcl/point_types.h>
+
+#include <opencv2/opencv.hpp>
 #include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+#include <vector>
+
+
 
 class ClickHandler {
+public:
+    ClickHandler(const cv::Mat& image, const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr depthMap);
 
-	public: 
-		ClickHandler(pcl::visualization::PCLVisualizer::Ptr viewer, 
-				pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr depthMap);	
-		void initialize();		
-		
+    void handleClicks(const std::string& windowName);
+	
+	bool getEnterStatus();
 
-		std::vector<pcl::PointXYZRGBNormal> getSelectedPoints() const;
+	std::vector<pcl::PointXYZRGBNormal> getSelectedPoints();
 
+private:
 
+    cv::Mat image_; 
+	pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr depthMap_;
+    cv::Mat displayedImage_;        
+	std::vector<pcl::PointXYZRGBNormal> selectedPoints;
 
-	private:
-		void pointPickingCallback(const pcl::visualization::PointPickingEvent& event);
-		void keyboardCallback(const pcl::visualization::KeyboardEvent& kbdEvent);
-		
-		void drawPlane();
+	pcl::PointXYZRGBNormal findCorrelatedPoint(int x, int y);
+	bool enterPressed_ = false;
 
-		pcl::visualization::PCLVisualizer::Ptr viewer_;
-		pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr depthMap;
-		std::vector<pcl::PointXYZRGBNormal> selectedPoints;
+    void drawCircle(int x, int y);
 
+    static void onMouse(int event, int x, int y, int flags, void* userdata);
 };
 
-#endif // CLICK_HANDLER_H
+#endif // CLICKHANDLER_H

@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 #ifdef __APPLE__
@@ -21,112 +22,127 @@
 #endif
 
 #define NUM_LINES 15438380
-#define PLANE_MAX_X_LIMIT 3.43346
-#define PLANE_MIN_X_LIMIT -4.43514
-#define PLANE_MAX_Y_LIMIT 1.32841
-#define PLANE_MIN_Y_LIMIT -1.09815
-#define PLANE_Z 1.5
-
-
-
 	
-struct cellData {
-	bool hasPoint = false;
-	pcl::PointXYZRGBNormal assignedPoint;
+struct ThreadArgs {
+    int startLine;  
+    int endLine;    
+    std::string filename; 
+    std::vector<pcl::PointXYZRGBNormal>* threadPoints; 
 };
 
-pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr CloudPointProcessor::loadPointCloud(const std::string &filename){
+void* parseFileChunk(void* args) {
+    auto* threadArgs = static_cast<ThreadArgs*>(args);
 
-	auto cloud = pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-	
-	std::ifstream file(filename);
-	if (!file.is_open()) {
-        std::cerr << "Error opening file! " << std::endl;
-		return NULL;
-	}
-
+    std::ifstream file(threadArgs->filename);
+    if (!file.is_open()) {
+        std::cerr << "Error opening file in thread!" << std::endl;
+        pthread_exit(nullptr);
+    }
+    // Skip lines before the start line
     std::string line;
-	while (std::getline(file, line)) {
-		std::istringstream stringStream(line);
-		pcl::PointXYZRGBNormal point;
-		float x, y, z, r, g, b, nx, ny, nz;
+    for (int i = 0; i < threadArgs->startLine && std::getline(file, line); ++i);
 
-		if (stringStream >> x >> y >> z >> r >> g >> b >> nx >> ny >> nz) {
-			point.x = x;
-			point.y = y;
-			point.z = z;
-			point.r = static_cast<uint8_t>(r);
-			point.g = static_cast<uint8_t>(g);
-			point.b = static_cast<uint8_t>(b);
-			point.normal_x = nx;
-			point.normal_y = ny;
-			point.normal_z = nz;
-		}
+    // Process lines in the given range
+    for (int i = threadArgs->startLine; i < threadArgs->endLine; ++i) {
+        if (!std::getline(file, line)) break;
 
-        cloud->points.push_back(point);
+        std::istringstream stringStream(line);
+        pcl::PointXYZRGBNormal point;
+        float x, y, z, r, g, b, nx, ny, nz;
+
+        if (stringStream >> x >> y >> z >> r >> g >> b >> nx >> ny >> nz) {
+            point.x = x;
+            point.y = y;
+            point.z = z;
+            point.r = static_cast<uint8_t>(r);
+            point.g = static_cast<uint8_t>(g);
+            point.b = static_cast<uint8_t>(b);
+            point.normal_x = nx;
+            point.normal_y = ny;
+            point.normal_z = nz;
+
+            threadArgs->threadPoints->push_back(point);
+        }
     }
 
-	std::cout << "File parsing completed. \n" << std::endl; 
-	return cloud;
+    pthread_exit(nullptr);
+}
+
+pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr CloudPointProcessor::loadPointCloud(const std::string &filename, int numThreads){
+
+	auto cloud = pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBNormal>);	
+
+	int chunkSize = (NUM_LINES + numThreads - 1) / numThreads;
+	
+	pthread_t threads[numThreads];
+    ThreadArgs threadArgs[numThreads];
+    std::vector<std::vector<pcl::PointXYZRGBNormal>> threadResults(numThreads);
+	
+	for (int i = 0; i < numThreads; ++i) {
+        threadArgs[i].startLine = i * chunkSize;
+        threadArgs[i].endLine = std::min((i + 1) * chunkSize, NUM_LINES);
+        threadArgs[i].filename = filename;
+        threadArgs[i].threadPoints = &threadResults[i];
+
+        if (pthread_create(&threads[i], nullptr, parseFileChunk, &threadArgs[i]) != 0) {
+            std::cerr << "Error creating thread " << i << std::endl;
+            return nullptr;
+        }
+    }
+
+	    for (int i = 0; i < numThreads; ++i) {
+        pthread_join(threads[i], nullptr);
+    }
+
+    // Combine results
+    for (const auto& threadResult : threadResults) {
+        cloud->points.insert(cloud->points.end(), threadResult.begin(), threadResult.end());
+    }
+
+    return cloud;
 }
 
 
- pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr CloudPointProcessor::mapToPixel(cv::Mat& image,
-		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr& pointCloud) {
+std::pair< cv::Mat&, pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr> CloudPointProcessor::mapToPixel(
+		const pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr& pointCloud,
+		cv::Mat& image) {
 	
-	std::cout << "Started DepthMap assemble.\n" << std::endl;
+	
+	const double X_MIN = -3.15, X_MAX = 3.15;
+    const double Y_MIN = -0.8, Y_MAX = 1.1;
+    const int IMG_WIDTH = image.cols;
+    const int IMG_HEIGHT = image.rows;
 
 	auto depthMap = pcl::PointCloud<pcl::PointXYZRGBNormal>::Ptr(new pcl::PointCloud<pcl::PointXYZRGBNormal>);
-	depthMap->width = image.cols;
-	depthMap->height = image.rows;
+	depthMap->width = IMG_WIDTH;
+	depthMap->height = IMG_HEIGHT;
+	depthMap->points.resize(IMG_WIDTH * IMG_HEIGHT);
+    
+	std::vector<double> zBuffer(IMG_WIDTH * IMG_HEIGHT, std::numeric_limits<double>::lowest());
 	
-	std::vector<std::vector<cellData>> pointMap(image.rows, std::vector<cellData>(image.cols));
-
-	//Source point
-	pcl::PointXYZ sourcePoint(0,0,10);
-	
-	std::cout << "Performing Calculations in point cloud\n" << std::endl;
-
 	for (const auto& point : pointCloud->points) {
-		double t = (PLANE_Z - sourcePoint.z)/(point.z - sourcePoint.z);
-
-		if(t < 0 || t > 1) {
-			continue;
-		}
-
-		double xInt = sourcePoint.x + (t *(point.x - sourcePoint.x));
-		double yInt = sourcePoint.y + (t *(point.y - sourcePoint.y));
-
-		if (xInt < PLANE_MIN_X_LIMIT || xInt > PLANE_MAX_X_LIMIT 
-				|| yInt <  PLANE_MIN_Y_LIMIT|| yInt > PLANE_MAX_Y_LIMIT) {
-			continue;
-		}
-
-		int col = static_cast<int>((xInt - PLANE_MIN_X_LIMIT) / 
-				(PLANE_MAX_X_LIMIT - PLANE_MIN_X_LIMIT) * (image.cols - 1));
-        int row = static_cast<int>((yInt - PLANE_MIN_Y_LIMIT) / 
-				(PLANE_MAX_Y_LIMIT - PLANE_MIN_Y_LIMIT) * (image.rows - 1));
-
-		if (!pointMap[row][col].hasPoint || 
-				point.z > pointMap[row][col].assignedPoint.z) {
-            pointMap[row][col].assignedPoint = point;
-            pointMap[row][col].hasPoint = true;
+        if (point.x < X_MIN || point.x > X_MAX || point.y < Y_MIN || point.y > Y_MAX) {
+            continue;
         }
+		
+		
+        int pixelX = static_cast<int>(((point.x - X_MIN) / (X_MAX - X_MIN)) * (IMG_WIDTH - 1));
+        int pixelY = static_cast<int>(((point.y - Y_MIN) / (Y_MAX - Y_MIN)) * (IMG_HEIGHT - 1));
+		pixelY = IMG_HEIGHT - 1 - pixelY;	
 
-	}
 
-	for (int r = 0; r < image.rows; ++r) {
-        for (int c = 0; c < image.cols; ++c) {
-            if (pointMap[r][c].hasPoint) {
-                pcl::PointXYZRGBNormal& point = pointMap[r][c].assignedPoint; 
-                // Add the highest-Z point for this cell to the output point cloud
-                depthMap->points.push_back(point);
-            }
-        }
+        int pixelIndex = pixelY * IMG_WIDTH + pixelX;
+		
+        if (point.z > zBuffer[pixelIndex]) {
+            zBuffer[pixelIndex] = point.z;  
+            depthMap->points[pixelIndex] = point;  
+			
+			std::cout << "Updating pixel: " << pixelX << ", " << pixelY
+              << " with Z: " << point.z << std::endl;
+        } 
     }
 	
-	std::cout << "Calculations finished." << std::endl;
-	return depthMap;
+	return {image, depthMap};
 }
 
 

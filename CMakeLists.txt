@@ -21,7 +21,7 @@ include_directories(include)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
 # Source files 
-add_executable(app src/Main.cpp src/Stitcher.cpp src/CloudPointProcessor.cpp src/ClickHandler.cpp)
+add_executable(app src/Main.cpp src/Stitcher.cpp src/CloudPointProcessor.cpp src/ClickHandler.cpp  src/Draw.cpp)
 
 if(APPLE)
     # Explicitly set OpenMP flags for macOS
