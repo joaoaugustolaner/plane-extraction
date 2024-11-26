@@ -24,7 +24,7 @@ pcl::PointXYZRGBNormal ClickHandler::findCorrelatedPoint(int x, int y){
 
 void ClickHandler::drawCircle(int x, int y) {
 
-    cv::circle(displayedImage_, cv::Point(x, y), 2, cv::Scalar(0, 0, 255), -1);
+    cv::circle(displayedImage_, cv::Point(x, y), 5, cv::Scalar(0, 0, 255), -1);
 	cv::imshow("Viewer", displayedImage_);
 }
 

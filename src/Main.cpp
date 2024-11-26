@@ -101,6 +101,8 @@ int main(int argc, char *argv[]) {
 
 	std::string cloudPointFile = "../resources/point-cloud.txt";
 	cv::Mat image = cv::imread("../resources/panorama.jpg");
+	std::cout << image.cols * image.rows; 
+
 	image = scaleImage(image, 2160, 1080); // 5120, 2160);
 	std::cout << "Size: " << image.cols << " x " << image.rows << std::endl;
 
@@ -149,7 +151,6 @@ int main(int argc, char *argv[]) {
 
 	auto [outImage,depthMap] = CloudPointProcessor::mapToPixel(cloud, image);
 
-	std::cout << "Original size: " << cloud->points.size() << "\n DepthMap size: " << depthMap->points.size();
 
 	ClickHandler handler(outImage, depthMap);
 	handler.handleClicks("Viewer");
@@ -157,7 +158,8 @@ int main(int argc, char *argv[]) {
 	pcl::visualization::PCLVisualizer::Ptr viewer(new pcl::visualization::PCLVisualizer("Point Cloud Viewer"));
 
 	viewer->setBackgroundColor(0, 0, 0);
-	viewer->addPointCloud<pcl::PointXYZRGBNormal>(depthMap, "sample cloud");
+	pcl::visualization::PointCloudColorHandlerRGBField<pcl::PointXYZRGBNormal> rgb(depthMap);
+	viewer->addPointCloud<pcl::PointXYZRGBNormal>(depthMap, rgb, "sample cloud");
 	viewer->setPointCloudRenderingProperties(
         pcl::visualization::PCL_VISUALIZER_POINT_SIZE, 1, "sample cloud");
 

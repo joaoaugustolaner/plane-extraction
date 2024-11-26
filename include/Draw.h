@@ -14,6 +14,7 @@ public:
 
     void fitPlaneAndRender(const std::vector<pcl::PointXYZRGBNormal>& selectedPoints);
 	void projectPlaneToImage(const cv::Mat& image, const std::vector<pcl::PointXYZRGBNormal>& selectedPoints);
+	
 
 	Eigen::Vector3f getPlaneNormal() const;
     Eigen::Vector3f getPlaneCentroid() const;
@@ -27,6 +28,9 @@ private:
 
     Eigen::Vector3f computePlaneNormal(const Eigen::MatrixXf& points);
     void renderPlane(const Eigen::Vector3f& normal, const Eigen::Vector3f& centroid, const std::vector<pcl::PointXYZRGBNormal>& selectedPoints);
-};
+	void renderDipAndStrikeVectors();
+	void renderThickVector(const Eigen::Vector3f& start, const Eigen::Vector3f& end,
+                             const std::string& id, float radius, float r, float g, float b);
+   };
 
 #endif // DRAW_H

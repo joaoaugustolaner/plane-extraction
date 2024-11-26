@@ -34,6 +34,7 @@ void Draw::fitPlaneAndRender(const std::vector<pcl::PointXYZRGBNormal>& selected
     planeCentroid_ = points.colwise().mean();
 
     renderPlane(planeNormal_, planeCentroid_, selectedPoints);
+	renderDipAndStrikeVectors();
 }
 
 Eigen::Vector3f Draw::getPlaneNormal() const{
@@ -83,6 +84,61 @@ void Draw::renderPlane(const Eigen::Vector3f& normal, const Eigen::Vector3f& cen
     viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 0.8, "translucent_plane"); // 50% opacity
     viewer_->spinOnce();
 }
+
+void Draw::renderDipAndStrikeVectors() {
+    // Compute strike and dip vectors
+    Eigen::Vector3f strikeVector = Eigen::Vector3f::UnitX().cross(planeNormal_).normalized();
+    Eigen::Vector3f dipVector = planeNormal_.cross(strikeVector).normalized();
+
+    float vectorScale = 0.5f; 
+    Eigen::Vector3f strikeEnd = planeCentroid_ + vectorScale * strikeVector;
+    Eigen::Vector3f dipEnd = planeCentroid_ + vectorScale * dipVector;
+
+    // Render the strike vector
+    viewer_->addLine(
+        pcl::PointXYZ(planeCentroid_.x(), planeCentroid_.y(), planeCentroid_.z()),
+        pcl::PointXYZ(strikeEnd.x(), strikeEnd.y(), strikeEnd.z()),
+        0.0, 1.0, 0.0, "strike_vector" // Green line for strike
+    );
+
+    // Render the dip vector
+   	renderThickVector(
+        planeCentroid_, strikeEnd, "strike_cylinder", 0.01f, 0.0f, 1.0f, 0.0f // Green cylinder
+    );
+
+	renderThickVector(
+        planeCentroid_, dipEnd, "dip_cylinder", 0.01f, 0.0f, 0.0f, 1.0f // Blue cylinder
+    );
+
+    viewer_->spinOnce();
+}
+
+void Draw::renderThickVector(const Eigen::Vector3f& start, const Eigen::Vector3f& end,
+                             const std::string& id, float radius, float r, float g, float b) {
+    // Compute direction vector and length of the cylinder
+    Eigen::Vector3f axis = end - start;
+    float length = axis.norm();
+
+    // Normalize the direction vector for cylinder orientation
+    axis.normalize();
+
+    // Define the cylinder's parameters
+    pcl::ModelCoefficients cylinder;
+    cylinder.values.resize(7); // x, y, z (center), dx, dy, dz (direction), radius
+    cylinder.values[0] = start.x();
+    cylinder.values[1] = start.y();
+    cylinder.values[2] = start.z();
+    cylinder.values[3] = axis.x();
+    cylinder.values[4] = axis.y();
+    cylinder.values[5] = axis.z();
+    cylinder.values[6] = radius; // Thickness of the vector
+
+    // Add the cylinder to the viewer
+    viewer_->addCylinder(cylinder, id);
+    viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_COLOR, r, g, b, id);
+    viewer_->setShapeRenderingProperties(pcl::visualization::PCL_VISUALIZER_OPACITY, 1.0, id); // Fully opaque
+}
+
 
 void Draw::projectPlaneToImage(const cv::Mat& image, const std::vector<pcl::PointXYZRGBNormal>& selectedPoints) {
     cv::Mat projectedImage= image.clone();
